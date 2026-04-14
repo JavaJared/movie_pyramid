@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MOVIE PYRAMID</title>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,700;0,6..96,900;1,6..96,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #d4af37;
+    --gold-bright: #f5d061;
+    --cream: #f4ead5;
+    --ink: #0a0a0a;
+    --crimson: #8b1a1a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--ink);
+    color: var(--cream);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(ellipse at top, rgba(212,175,55,0.08), transparent 60%),
+      radial-gradient(ellipse at bottom, rgba(139,26,26,0.12), transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+    opacity: 0.08;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+    z-index: 1;
+  }
+  .wrap {
+    position: relative;
+    z-index: 2;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  header {
+    text-align: center;
+    padding: 30px 0 50px;
+    border-bottom: 1px solid rgba(212,175,55,0.3);
+    margin-bottom: 50px;
+    position: relative;
+  }
+  header::before, header::after {
+    content: '★';
+    position: absolute;
+    bottom: -10px;
+    color: var(--gold);
+    background: var(--ink);
+    padding: 0 12px;
+    font-size: 14px;
+  }
+  header::before { left: 50%; transform: translateX(-30px); }
+  header::after { left: 50%; transform: translateX(18px); }
+  h1 {
+    font-family: 'Bodoni Moda', serif;
+    font-weight: 900;
+    font-size: clamp(48px, 9vw, 110px);
+    letter-spacing: -0.02em;
+    line-height: 0.9;
+    color: var(--cream);
+    text-shadow: 3px 3px 0 var(--crimson);
+  }
+  h1 .gold { color: var(--gold-bright); font-style: italic; }
+  .subtitle {
+    margin-top: 14px;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+  .panel {
+    background: rgba(20,15,10,0.7);
+    border: 1px solid rgba(212,175,55,0.25);
+    padding: 36px;
+    backdrop-filter: blur(6px);
+  }
+
+  .pyramid {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    margin: 20px 0 40px;
+  }
+  .row {
+    width: 100%;
+    border: 1px solid rgba(212,175,55,0.25);
+    padding: 18px 20px;
+    background: rgba(0,0,0,0.35);
+    transition: all 0.3s;
+    cursor: pointer;
+    position: relative;
+  }
+  .row:hover { border-color: rgba(212,175,55,0.6); }
+  .row.active {
+    border-color: var(--gold-bright);
+    background: rgba(212,175,55,0.08);
+    box-shadow: 0 0 30px rgba(245,208,97,0.15);
+  }
+  .row.complete {
+    border-color: #4a8c4a;
+    background: rgba(74,140,74,0.08);
+  }
+  .row[data-tier="4"] { width: 100%; }
+  .row[data-tier="3"] { width: 82%; }
+  .row[data-tier="2"] { width: 64%; }
+  .row[data-tier="1"] { width: 46%; }
+
+  .row-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .row-title {
+    font-family: 'Bodoni Moda', serif;
+    font-size: clamp(22px, 2.8vw, 30px);
+    font-weight: 900;
+    color: var(--cream);
+    line-height: 1.15;
+  }
+  .row-title em {
+    font-style: italic;
+    color: var(--gold-bright);
+    font-weight: 700;
+  }
+  .actor-link {
+    cursor: pointer;
+    border-bottom: 1px dashed rgba(212,175,55,0.5);
+    transition: all 0.2s;
+  }
+  .actor-link:hover {
+    color: var(--gold-bright);
+    border-bottom-color: var(--gold-bright);
+  }
+
+  .modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.25s ease;
+  }
+  .modal.hidden { display: none; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(8px);
+    cursor: pointer;
+  }
+  .modal-content {
+    position: relative;
+    max-width: 420px;
+    width: 90%;
+    background: #14100a;
+    border: 1px solid var(--gold);
+    padding: 6px 6px 0;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.8), 0 0 60px rgba(212,175,55,0.15);
+    animation: zoomIn 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  }
+  @keyframes zoomIn {
+    from { transform: scale(0.85); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .modal-content img {
+    width: 100%;
+    display: block;
+    background: #0a0a0a;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+  }
+  .modal-content img.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gold);
+    font-family: 'Bodoni Moda', serif;
+    font-style: italic;
+  }
+  .modal-name {
+    text-align: center;
+    padding: 18px 16px 22px;
+    font-family: 'Bodoni Moda', serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--cream);
+    letter-spacing: 0.01em;
+  }
+  .modal-close {
+    position: absolute;
+    top: -16px;
+    right: -16px;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--gold);
+    color: var(--ink);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 2px solid var(--ink);
+  }
+  .modal-close:hover { background: var(--gold-bright); transform: scale(1.1); }
+
+  /* Leaderboard modal */
+  .lb-content {
+    position: relative;
+    max-width: 520px;
+    width: 92%;
+    background: #14100a;
+    border: 2px solid var(--gold);
+    padding: 36px 32px 32px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.8), 0 0 80px rgba(212,175,55,0.2);
+    animation: zoomIn 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .lb-title {
+    text-align: center;
+    font-family: 'Bodoni Moda', serif;
+    font-size: 42px;
+    font-weight: 900;
+    color: var(--cream);
+    text-shadow: 2px 2px 0 var(--crimson);
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+  .lb-subtitle {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin: 8px 0 24px;
+  }
+  .lb-entry {
+    background: rgba(212,175,55,0.08);
+    border: 1px dashed var(--gold);
+    padding: 22px 18px;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+  .lb-entry-banner {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.25em;
+    color: var(--gold-bright);
+    margin-bottom: 8px;
+    animation: blink 1.2s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%, 60%, 100% { opacity: 1; }
+    30% { opacity: 0.45; }
+  }
+  .lb-entry-score {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 56px;
+    font-weight: 900;
+    color: var(--cream);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .lb-entry-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .lb-initials {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .lb-char {
+    width: 58px;
+    height: 72px;
+    background: #0a0a0a;
+    border: 2px solid var(--gold);
+    color: var(--gold-bright);
+    font-family: 'DM Mono', monospace;
+    font-size: 42px;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+    outline: none;
+    padding: 0;
+    caret-color: var(--gold-bright);
+  }
+  .lb-char:focus {
+    border-color: var(--gold-bright);
+    box-shadow: 0 0 20px rgba(245,208,97,0.4);
+  }
+  .lb-submit {
+    background: var(--gold);
+    color: var(--ink);
+    padding: 12px 36px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+  }
+  .lb-submit:hover { background: var(--gold-bright); }
+
+  .lb-list {
+    font-family: 'DM Mono', monospace;
+  }
+  .lb-list-empty {
+    text-align: center;
+    padding: 30px 20px;
+    font-family: 'Bodoni Moda', serif;
+    font-style: italic;
+    font-size: 18px;
+    color: rgba(244,234,213,0.5);
+  }
+  .lb-entry-row {
+    display: grid;
+    grid-template-columns: 38px 1fr auto;
+    gap: 16px;
+    align-items: baseline;
+    padding: 11px 12px;
+    border-bottom: 1px dashed rgba(212,175,55,0.2);
+  }
+  .lb-entry-row:last-child { border-bottom: none; }
+  .lb-entry-row.highlight {
+    background: rgba(245,208,97,0.12);
+    border-color: var(--gold-bright);
+  }
+  .lb-rank {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+  }
+  .lb-initials-display {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--cream);
+    letter-spacing: 0.15em;
+  }
+  .lb-entry-row.highlight .lb-initials-display { color: var(--gold-bright); }
+  .lb-score-display {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--cream);
+  }
+  .lb-entry-row.highlight .lb-score-display { color: var(--gold-bright); }
+  .row-tier {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    color: var(--gold);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .slots {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .slot {
+    flex: 1 1 0;
+    min-width: 90px;
+    height: 62px;
+    border: 1px solid rgba(212,175,55,0.4);
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+    padding: 6px 8px;
+    color: rgba(244,234,213,0.4);
+    overflow: hidden;
+    line-height: 1.25;
+  }
+  .slot.filled {
+    background: var(--gold);
+    color: var(--ink);
+    border-color: var(--gold-bright);
+    font-weight: 600;
+    animation: pop 0.4s ease;
+  }
+  @keyframes pop {
+    0% { transform: scale(0.8); opacity: 0; }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .input-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px dashed rgba(212,175,55,0.25);
+  }
+  .input-row > div { flex: 1; }
+  .autocomplete-wrap { position: relative; }
+  .suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #1a140a;
+    border: 1px solid var(--gold);
+    border-top: none;
+    max-height: 280px;
+    overflow-y: auto;
+    z-index: 50;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  }
+  .suggestion {
+    padding: 12px 16px;
+    cursor: pointer;
+    font-family: 'Bodoni Moda', serif;
+    font-size: 19px;
+    font-weight: 500;
+    color: var(--cream);
+    border-bottom: 1px solid rgba(212,175,55,0.12);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    transition: background 0.12s;
+  }
+  .suggestion:last-child { border-bottom: none; }
+  .suggestion:hover, .suggestion.active {
+    background: rgba(212,175,55,0.18);
+    color: var(--gold-bright);
+  }
+  .suggestion .year {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+    flex-shrink: 0;
+  }
+  .suggestion .actor-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: rgba(212,175,55,0.8);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-left: auto;
+    padding-left: 10px;
+  }
+  .suggestions::-webkit-scrollbar { width: 8px; }
+  .suggestions::-webkit-scrollbar-track { background: rgba(0,0,0,0.4); }
+  .suggestions::-webkit-scrollbar-thumb { background: var(--gold); }
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 10px;
+  }
+  input[type="text"] {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(212,175,55,0.4);
+    color: var(--cream);
+    font-family: 'Bodoni Moda', serif;
+    font-size: 26px;
+    font-weight: 500;
+    padding: 10px 0;
+    outline: none;
+  }
+  input[type="text"]:focus { border-color: var(--gold-bright); }
+
+  button {
+    background: var(--gold);
+    color: var(--ink);
+    border: none;
+    padding: 16px 32px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  button:hover { background: var(--gold-bright); transform: translateY(-2px); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  button.ghost {
+    background: transparent;
+    color: var(--gold);
+    border: 1px solid var(--gold);
+  }
+  button.ghost:hover { background: var(--gold); color: var(--ink); }
+
+  .feedback {
+    margin-top: 16px;
+    padding: 14px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    min-height: 48px;
+    line-height: 1.5;
+    border-left: 3px solid var(--gold);
+    background: rgba(212,175,55,0.06);
+  }
+  .feedback.error { border-color: var(--crimson); background: rgba(139,26,26,0.15); }
+  .feedback.success { border-color: #4a8c4a; background: rgba(74,140,74,0.12); }
+
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px dashed rgba(212,175,55,0.25);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold);
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .meta .score { font-family: 'Bodoni Moda', serif; font-size: 36px; font-weight: 900; color: var(--cream); letter-spacing: 0; }
+  .controls { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 20px; }
+
+  .loading {
+    text-align: center;
+    padding: 80px 20px;
+    font-family: 'Bodoni Moda', serif;
+    font-style: italic;
+    font-size: 24px;
+    color: var(--gold);
+  }
+
+  .results {
+    margin-top: 30px;
+    padding: 24px;
+    border: 1px dashed rgba(212,175,55,0.4);
+  }
+  .results h3 {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 26px;
+    font-weight: 900;
+    color: var(--gold);
+    margin-bottom: 16px;
+  }
+  .reveal-row { margin-bottom: 22px; }
+  .reveal-row .rh {
+    font-size: 13px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 8px;
+  }
+  .reveal-row ul { list-style: none; columns: 2; column-gap: 24px; }
+  .reveal-row li { padding: 4px 0; font-size: 15px; font-weight: 500; color: var(--cream); break-inside: avoid; }
+  .reveal-row li::before { content: '◆ '; color: var(--gold); }
+  .reveal-row li.found { color: var(--gold-bright); }
+
+  .hidden { display: none; }
+  footer {
+    text-align: center;
+    margin-top: 60px;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: rgba(212,175,55,0.55);
+    text-transform: uppercase;
+  }
+  @media (max-width: 700px) {
+    .row[data-tier="3"], .row[data-tier="2"], .row[data-tier="1"] { width: 100%; }
+    .panel { padding: 22px 16px; }
+    .slot { min-width: 72px; font-size: 11px; height: 56px; }
+    .reveal-row ul { columns: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>MOVIE <span class="gold">Pyramid</span></h1>
+    <div class="subtitle">A Cinephile's Wager · Powered by TMDB</div>
+  </header>
+
+  <div id="game" class="panel">
+    <div id="loading" class="loading">Curating tonight's program — this may take a moment…</div>
+
+    <div id="board" class="hidden">
+      <div class="pyramid" id="pyramid"></div>
+
+      <div class="input-row">
+        <div class="autocomplete-wrap">
+          <label>Name a Film — auto-routes to the matching row</label>
+          <input type="text" id="guess" placeholder="Type a movie title…" autocomplete="off" spellcheck="false" />
+          <div id="suggestions" class="suggestions hidden"></div>
+        </div>
+        <button id="submitBtn">Submit</button>
+      </div>
+
+      <div class="feedback" id="feedback">Easier rows are at the bottom. Obscurer picks earn bonus points — up to 3× a common pick.</div>
+
+      <div class="meta">
+        <div>Filled <span id="filledCount">0</span> / 10</div>
+        <div class="score" id="score">0</div>
+        <div>Guesses Left: <span id="guessesLeft">15</span></div>
+      </div>
+
+      <div class="controls">
+        <button id="newRound" class="ghost">New Round</button>
+        <button id="viewLeaderboard" class="ghost">Leaderboard</button>
+        <button id="giveUp" class="ghost">Reveal Answers</button>
+      </div>
+
+      <div id="results" class="results hidden">
+        <h3>The Filmographies</h3>
+        <div id="answersBlock"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>This product uses the TMDB API but is not endorsed or certified by TMDB.</footer>
+</div>
+
+<div id="actorModal" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-content">
+    <button class="modal-close" id="modalClose">×</button>
+    <img id="modalImg" alt="" />
+    <div class="modal-name" id="modalName"></div>
+  </div>
+</div>
+
+<div id="leaderboardModal" class="modal hidden">
+  <div class="modal-backdrop" data-lb-close></div>
+  <div class="lb-content">
+    <button class="modal-close" id="lbClose">×</button>
+    <div class="lb-title">High Scores</div>
+    <div class="lb-subtitle">— Top 10 Pyramids —</div>
+
+    <div id="lbEntryScreen" class="lb-entry hidden">
+      <div class="lb-entry-banner">★ NEW HIGH SCORE ★</div>
+      <div class="lb-entry-score" id="lbEntryScore">0</div>
+      <div class="lb-entry-label">Enter Your Initials</div>
+      <div class="lb-initials">
+        <input type="text" class="lb-char" maxlength="1" data-i="0" />
+        <input type="text" class="lb-char" maxlength="1" data-i="1" />
+        <input type="text" class="lb-char" maxlength="1" data-i="2" />
+      </div>
+      <button id="lbSubmitBtn" class="lb-submit">Enter</button>
+    </div>
+
+    <div id="lbList" class="lb-list"></div>
+  </div>
+</div>
+
+<script>
+const MAX_GUESSES = 15;
+
+// TMDB calls are proxied through /api/tmdb so the API key stays on the server
+async function tmdb(path, params={}) {
+  const url = new URL('/api/tmdb', window.location.origin);
+  url.searchParams.set('path', path);
+  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`TMDB ${res.status}`);
+  return res.json();
+}
+
+// tier 4 = bottom (broadest), tier 1 = top (most specific)
+// All actors come from a curated mainstream pool, so difficulty = category specificity
+const TIERS = [
+  { tier: 4, slots: 4, label: 'BASE · Broad',     targetMin: 12, targetMax: 999 },
+  { tier: 3, slots: 3, label: 'TIER III · Solid', targetMin: 8,  targetMax: 14  },
+  { tier: 2, slots: 2, label: 'TIER II · Narrow', targetMin: 5,  targetMax: 9   },
+  { tier: 1, slots: 1, label: 'APEX · Razor',     targetMin: 3,  targetMax: 6   },
+];
+
+let state = {
+  rows: [],
+  activeRowIdx: 0,
+  guessesLeft: MAX_GUESSES,
+  score: 0,
+  totalSlots: TIERS.reduce((a,t)=>a+t.slots,0),
+};
+
+const GENRE_MAP = {
+  28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
+  99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History',
+  27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance',
+  878: 'Sci-Fi', 53: 'Thriller', 10752: 'War', 37: 'Western'
+};
+
+function buildCategories() {
+  const cats = [];
+
+  // ----- GENRE (free, no enrichment needed) -----
+  Object.entries(GENRE_MAP).forEach(([id, name]) => {
+    cats.push({
+      label: `<em>${name}</em> films`,
+      test: (m) => m.genre_ids && m.genre_ids.includes(parseInt(id))
+    });
+  });
+
+  // ----- DECADE -----
+  [1970, 1980, 1990, 2000, 2010, 2020].forEach(d => {
+    cats.push({
+      label: `Released in the <em>${d}s</em>`,
+      test: (m) => {
+        if (!m.release_date) return false;
+        const y = parseInt(m.release_date.slice(0,4));
+        return y >= d && y < d + 10;
+      }
+    });
+  });
+
+  // ----- GENRE × DECADE COMBOS -----
+  const popularGenres = [[28,'Action'],[35,'Comedy'],[18,'Drama'],[27,'Horror'],[53,'Thriller'],[878,'Sci-Fi'],[80,'Crime'],[10749,'Romance']];
+  [1990, 2000, 2010, 2020].forEach(d => {
+    popularGenres.forEach(([gid, gname]) => {
+      cats.push({
+        label: `<em>${gname}</em> films from the <em>${d}s</em>`,
+        test: (m) => {
+          if (!m.genre_ids || !m.genre_ids.includes(gid)) return false;
+          if (!m.release_date) return false;
+          const y = parseInt(m.release_date.slice(0,4));
+          return y >= d && y < d + 10;
+        }
+      });
+    });
+  });
+
+  // ----- RATING -----
+  cats.push({ label: 'Rated <em>7.5+</em> on TMDB',     test: m => m.vote_average >= 7.5 && m.vote_count >= 100 });
+  cats.push({ label: 'Rated <em>below 6.0</em> on TMDB', test: m => m.vote_average < 6.0 && m.vote_count >= 50 });
+
+  // ----- TITLE QUIRKS -----
+  cats.push({ label: 'Title is a <em>single word</em>', test: m => m.title && m.title.trim().split(/\s+/).length === 1 });
+  cats.push({ label: 'Title contains a <em>number</em>', test: m => /\d/.test(m.title || '') });
+  cats.push({ label: 'Title starts with <em>"The"</em>', test: m => /^the\s/i.test(m.title || '') });
+
+  // ----- RUNTIME -----
+  cats.push({ label: 'Runtime over <em>2.5 hours</em>',  test: m => m.runtime >= 150 });
+  cats.push({ label: 'Runtime under <em>100 minutes</em>', test: m => m.runtime > 0 && m.runtime < 100 });
+
+  // ----- BUDGET / REVENUE -----
+  cats.push({ label: '<em>Big-budget</em> films ($100M+)', test: m => m.budget >= 100_000_000 });
+  cats.push({ label: '<em>Low-budget</em> films (under $20M)', test: m => m.budget > 0 && m.budget < 20_000_000 });
+  cats.push({ label: 'Grossed over <em>$500M</em> worldwide', test: m => m.revenue >= 500_000_000 });
+  cats.push({ label: 'Grossed over <em>$200M</em> worldwide', test: m => m.revenue >= 200_000_000 });
+  cats.push({ label: '<em>Box office bombs</em> (lost money)', test: m => m.budget > 1_000_000 && m.revenue > 0 && m.revenue < m.budget });
+  cats.push({ label: '<em>Profitable</em> films (3× budget)', test: m => m.budget > 1_000_000 && m.revenue >= m.budget * 3 });
+
+  // ----- MPAA RATING (US) -----
+  cats.push({ label: '<em>R-rated</em> films',   test: m => m.us_rating === 'R' });
+  cats.push({ label: '<em>PG-13</em> films',     test: m => m.us_rating === 'PG-13' });
+  cats.push({ label: '<em>PG</em> films',        test: m => m.us_rating === 'PG' });
+
+  // ----- PRODUCTION COMPANIES -----
+  const studios = [
+    { name: 'Walt Disney',  match: c => /walt disney pictures|walt disney animation/i.test(c.name) },
+    { name: 'Pixar',        match: c => /pixar/i.test(c.name) },
+    { name: 'Marvel Studios', match: c => /^marvel studios$/i.test(c.name) },
+    { name: 'DreamWorks',   match: c => /dreamworks/i.test(c.name) },
+    { name: 'Warner Bros.', match: c => /warner bros/i.test(c.name) },
+    { name: 'Universal',    match: c => /^universal pictures$/i.test(c.name) },
+    { name: 'Paramount',    match: c => /^paramount(?: pictures)?$/i.test(c.name) },
+    { name: 'A24',          match: c => /^a24$/i.test(c.name) },
+    { name: 'Blumhouse',    match: c => /blumhouse/i.test(c.name) },
+    { name: 'Lionsgate',    match: c => /^lionsgate$/i.test(c.name) || /^lions gate/i.test(c.name) },
+    { name: '20th Century', match: c => /20th century/i.test(c.name) },
+    { name: 'Sony Pictures',match: c => /^sony pictures$/i.test(c.name) || /columbia pictures/i.test(c.name) },
+    { name: 'Netflix',      match: c => /^netflix$/i.test(c.name) },
+  ];
+  studios.forEach(s => {
+    cats.push({
+      label: `<em>${s.name}</em> productions`,
+      test: m => (m.production_companies || []).some(s.match)
+    });
+  });
+
+  // ----- DIRECTORS (acclaimed) -----
+  const directors = [
+    'Steven Spielberg','Christopher Nolan','Martin Scorsese','Quentin Tarantino',
+    'Ridley Scott','Clint Eastwood','David Fincher','Tim Burton','Wes Anderson',
+    'Coen','Spike Lee','Ron Howard','Robert Zemeckis','Michael Bay',
+    'James Cameron','Paul Thomas Anderson','Sofia Coppola','Greta Gerwig',
+    'Denis Villeneuve','Guillermo del Toro','Alfonso Cuarón','Ang Lee',
+    'Peter Jackson','M. Night Shyamalan','Jordan Peele','Spike Jonze'
+  ];
+  directors.forEach(name => {
+    cats.push({
+      label: `Directed by <em>${name === 'Coen' ? 'a Coen brother' : name}</em>`,
+      test: m => (m.director || []).some(d => d.includes(name))
+    });
+  });
+
+  // ----- KEYWORDS (TMDB user tags) -----
+  const keywordCats = [
+    { label: 'Based on a <em>true story</em>',    kws: ['based on true story','biography','based on a true story'] },
+    { label: 'Based on a <em>novel</em>',         kws: ['based on novel or book','based on novel'] },
+    { label: '<em>Sequels</em>',                  kws: ['sequel'] },
+    { label: '<em>Remakes</em>',                  kws: ['remake'] },
+    { label: 'Set during <em>World War II</em>', kws: ['world war ii'] },
+    { label: '<em>Time travel</em> films',        kws: ['time travel'] },
+    { label: '<em>Heist</em> films',              kws: ['heist'] },
+    { label: '<em>Superhero</em> films',          kws: ['superhero','marvel comic','dc comics'] },
+    { label: 'Set in <em>New York City</em>',     kws: ['new york city'] },
+    { label: 'Set in <em>space</em>',             kws: ['space','outer space'] },
+    { label: '<em>Christmas</em> films',          kws: ['christmas'] },
+    { label: '<em>Coming-of-age</em> stories',    kws: ['coming of age','coming-of-age'] },
+  ];
+  keywordCats.forEach(({ label, kws }) => {
+    cats.push({
+      label,
+      test: m => (m.keywords || []).some(k => kws.some(kw => k.includes(kw)))
+    });
+  });
+
+  // ----- LANGUAGE / FRANCHISE -----
+  cats.push({ label: '<em>Non-English-language</em> films', test: m => m.original_language && m.original_language !== 'en' });
+  cats.push({ label: 'Part of a <em>franchise</em>', test: m => !!m.belongs_to_collection });
+  cats.push({ label: '<em>Standalone</em> films (no franchise)', test: m => m._enriched && !m.belongs_to_collection });
+
+  return cats;
+}
+const CATEGORIES = buildCategories();
+
+function normalize(s) {
+  return (s||'').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]/g,'');
+}
+function lev(a,b) {
+  if (a===b) return 0;
+  const m=a.length, n=b.length;
+  if (!m) return n; if (!n) return m;
+  const dp = Array.from({length:m+1},()=>new Array(n+1).fill(0));
+  for (let i=0;i<=m;i++) dp[i][0]=i;
+  for (let j=0;j<=n;j++) dp[0][j]=j;
+  for (let i=1;i<=m;i++) for (let j=1;j<=n;j++) {
+    dp[i][j] = Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1] + (a[i-1]===b[j-1]?0:1));
+  }
+  return dp[m][n];
+}
+function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+// Curated pool of ~125 mainstream actors known to English-speaking audiences.
+// We look them up by name on first run and cache the results in memory.
+const MAINSTREAM_ACTORS = [
+  // A-list leading men
+  "Tom Hanks","Leonardo DiCaprio","Brad Pitt","Tom Cruise","Denzel Washington",
+  "Will Smith","Robert De Niro","Al Pacino","Johnny Depp","Matt Damon",
+  "George Clooney","Harrison Ford","Morgan Freeman","Samuel L. Jackson","Robert Downey Jr.",
+  "Christian Bale","Hugh Jackman","Ryan Gosling","Ryan Reynolds","Chris Evans",
+  "Chris Hemsworth","Chris Pratt","Mark Wahlberg","Bradley Cooper","Joaquin Phoenix",
+  "Jake Gyllenhaal","Matthew McConaughey","Ben Affleck","Mark Ruffalo","Jeremy Renner",
+  "Jeff Bridges","Michael Douglas","Kevin Costner","Liam Neeson","Pierce Brosnan",
+  "Daniel Craig","Hugh Grant","Colin Firth","Ewan McGregor","Jude Law",
+  "Tom Hardy","Michael Fassbender","Cillian Murphy","Idris Elba","Daniel Day-Lewis",
+  "Gary Oldman","Anthony Hopkins","Ian McKellen","Patrick Stewart","Michael Caine",
+  "Sean Penn","Kevin Spacey","Edward Norton","John Travolta","Nicolas Cage",
+  "Keanu Reeves","Bruce Willis","Sylvester Stallone","Arnold Schwarzenegger","Dwayne Johnson",
+  "Vin Diesel","Jason Statham","Jackie Chan","Jet Li","Russell Crowe",
+  "Mel Gibson","Eddie Murphy","Jamie Foxx","Forest Whitaker","Don Cheadle",
+  "Jonah Hill","Seth Rogen","Steve Carell","Will Ferrell","Adam Sandler",
+  "Ben Stiller","Jim Carrey","Owen Wilson","Vince Vaughn","Paul Rudd",
+  "Andrew Garfield","Tobey Maguire","Tom Holland","Timothée Chalamet","Adam Driver",
+  "Oscar Isaac","Pedro Pascal","Mahershala Ali","Michael B. Jordan","John Boyega",
+  // A-list leading women
+  "Meryl Streep","Julia Roberts","Sandra Bullock","Jennifer Lawrence","Scarlett Johansson",
+  "Angelina Jolie","Cate Blanchett","Nicole Kidman","Charlize Theron","Kate Winslet",
+  "Anne Hathaway","Natalie Portman","Reese Witherspoon","Emma Stone","Emma Watson",
+  "Jessica Chastain","Amy Adams","Viola Davis","Halle Berry","Salma Hayek",
+  "Penélope Cruz","Marion Cotillard","Helena Bonham Carter","Tilda Swinton","Judi Dench",
+  "Helen Mirren","Sigourney Weaver","Diane Keaton","Susan Sarandon","Glenn Close",
+  "Jodie Foster","Michelle Pfeiffer","Demi Moore","Drew Barrymore","Cameron Diaz",
+  "Jennifer Aniston","Halle Bailey","Margot Robbie","Anya Taylor-Joy","Florence Pugh",
+  "Saoirse Ronan","Brie Larson","Lupita Nyong'o","Zendaya","Zoe Saldana",
+  "Gal Gadot","Rebecca Ferguson","Rosamund Pike","Emily Blunt","Kristen Stewart",
+  "Mila Kunis","Anna Kendrick","Rachel McAdams","Keira Knightley","Naomi Watts",
+  "Tessa Thompson","Octavia Spencer","Regina King"
+];
+
+let actorPoolCache = null;
+
+async function lookupActor(name) {
+  try {
+    const data = await tmdb('/search/person', { query: name, include_adult: 'false' });
+    const results = (data.results || []).filter(p => p.known_for_department === 'Acting');
+    if (!results.length) return null;
+    // Prefer the most popular result (handles name collisions)
+    results.sort((a,b) => (b.popularity||0) - (a.popularity||0));
+    return results[0];
+  } catch { return null; }
+}
+
+async function getActorPool() {
+  if (actorPoolCache) return shuffle(actorPoolCache);
+  // Look up names in parallel batches to keep it fast
+  const batchSize = 10;
+  const found = [];
+  for (let i = 0; i < MAINSTREAM_ACTORS.length; i += batchSize) {
+    const batch = MAINSTREAM_ACTORS.slice(i, i + batchSize);
+    const results = await Promise.all(batch.map(lookupActor));
+    results.forEach(r => { if (r) found.push(r); });
+  }
+  actorPoolCache = found;
+  return shuffle(found);
+}
+
+// Cache: personId -> enriched movie array
+const actorMoviesCache = new Map();
+const MAX_ENRICH = 40; // cap detail fetches per actor — rest keep only basic fields
+
+async function getActorMovies(personId) {
+  if (actorMoviesCache.has(personId)) return actorMoviesCache.get(personId);
+
+  const data = await tmdb(`/person/${personId}/movie_credits`);
+  const seen = new Set();
+  const allMovies = [];
+  for (const m of data.cast || []) {
+    if (seen.has(m.id)) continue;
+    seen.add(m.id);
+    if (!m.title) continue;
+    if (m.vote_count < 5) continue;
+    allMovies.push(m);
+  }
+  // Sort by popularity so enrichment targets the most recognizable films
+  allMovies.sort((a,b) => (b.popularity||0) - (a.popularity||0));
+
+  // Split: top N get enriched, rest stay as basic credits
+  const toEnrich = allMovies.slice(0, MAX_ENRICH);
+  const unenriched = allMovies.slice(MAX_ENRICH).map(m => ({ ...m, _enriched: false }));
+
+  // Enrich each in parallel (append_to_response bundles 4 endpoints into 1 call)
+  const enriched = await Promise.all(toEnrich.map(async (m) => {
+    try {
+      const det = await tmdb(`/movie/${m.id}`, { append_to_response: 'credits,keywords,release_dates' });
+      return {
+        ...m,
+        runtime: det.runtime,
+        budget: det.budget,
+        revenue: det.revenue,
+        production_companies: det.production_companies || [],
+        production_countries: det.production_countries || [],
+        original_language: det.original_language,
+        belongs_to_collection: det.belongs_to_collection,
+        director: (det.credits?.crew || []).filter(c => c.job === 'Director').map(c => c.name),
+        keywords: (det.keywords?.keywords || []).map(k => k.name.toLowerCase()),
+        us_rating: extractUSRating(det.release_dates),
+        _enriched: true,
+      };
+    } catch {
+      return { ...m, _enriched: false };
+    }
+  }));
+
+  // Return the FULL filmography — enriched movies first (they're most popular), then the rest.
+  // This way, basic categories (genre, decade, rating, title) see everything,
+  // while enriched categories (director, runtime, studio, keywords) silently skip unenriched.
+  const combined = [...enriched, ...unenriched];
+  actorMoviesCache.set(personId, combined);
+  return combined;
+}
+
+function extractUSRating(releaseDates) {
+  if (!releaseDates?.results) return null;
+  const us = releaseDates.results.find(r => r.iso_3166_1 === 'US');
+  if (!us) return null;
+  for (const rd of us.release_dates || []) {
+    if (rd.certification && rd.certification.trim()) return rd.certification.trim();
+  }
+  return null;
+}
+
+async function buildRound() {
+  showLoading(true);
+  state.rows = [];
+  state.guessesLeft = MAX_GUESSES;
+  state.score = 0;
+  state.activeRowIdx = 0;
+
+  const actorPool = await getActorPool();
+  const usedActors = new Set();
+
+  for (const tierCfg of TIERS) {
+    let built = false;
+    for (const actor of actorPool) {
+      if (built) break;
+      if (usedActors.has(actor.id)) continue;
+
+      let movies;
+      try { movies = await getActorMovies(actor.id); } catch { continue; }
+      if (movies.length < tierCfg.targetMin) continue;
+
+      const cats = shuffle(CATEGORIES);
+      for (const cat of cats) {
+        const eligible = movies.filter(cat.test);
+        if (eligible.length >= tierCfg.targetMin && eligible.length <= tierCfg.targetMax && eligible.length >= tierCfg.slots) {
+          eligible.sort((a,b) => (b.popularity||0) - (a.popularity||0));
+          state.rows.push({
+            tier: tierCfg.tier,
+            slots: tierCfg.slots,
+            label: tierCfg.label,
+            actor,
+            category: cat,
+            eligibleMovies: eligible.map((m, i) => ({
+              id: m.id,
+              title: m.title,
+              normalized: normalize(m.title),
+              year: (m.release_date||'').slice(0,4),
+              popularity: m.popularity || 0,
+              popRank: i,           // 0 = most popular
+              poolSize: eligible.length,
+            })),
+            found: new Set(),
+          });
+          usedActors.add(actor.id);
+          built = true;
+          break;
+        }
+      }
+    }
+    if (!built) {
+      // Relaxed fallback
+      for (const actor of actorPool) {
+        if (usedActors.has(actor.id)) continue;
+        let movies;
+        try { movies = await getActorMovies(actor.id); } catch { continue; }
+        const cats = shuffle(CATEGORIES);
+        for (const cat of cats) {
+          const eligible = movies.filter(cat.test);
+          if (eligible.length >= tierCfg.slots && eligible.length <= tierCfg.targetMax + 4) {
+            eligible.sort((a,b) => (b.popularity||0) - (a.popularity||0));
+            state.rows.push({
+              tier: tierCfg.tier, slots: tierCfg.slots, label: tierCfg.label,
+              actor, category: cat,
+              eligibleMovies: eligible.map((m, i) => ({
+                id: m.id, title: m.title, normalized: normalize(m.title), year: (m.release_date||'').slice(0,4),
+                popularity: m.popularity || 0, popRank: i, poolSize: eligible.length,
+              })),
+              found: new Set(),
+            });
+            usedActors.add(actor.id);
+            built = true; break;
+          }
+        }
+        if (built) break;
+      }
+    }
+  }
+
+  if (state.rows.length < TIERS.length) {
+    setFeedback('Couldn\'t assemble a full pyramid. Try New Round.', 'error');
+    showLoading(false);
+    return;
+  }
+
+  showLoading(false);
+  renderPyramid();
+}
+
+function showLoading(on) {
+  document.getElementById('loading').classList.toggle('hidden', !on);
+  document.getElementById('board').classList.toggle('hidden', on);
+}
+
+function renderPyramid() {
+  const pyramid = document.getElementById('pyramid');
+  pyramid.innerHTML = '';
+  const sorted = [...state.rows].sort((a,b) => a.tier - b.tier);
+  sorted.forEach((row) => {
+    const realIdx = state.rows.indexOf(row);
+    const div = document.createElement('div');
+    div.className = 'row';
+    div.dataset.tier = row.tier;
+    if (row.found.size >= row.slots) div.classList.add('complete');
+    div.innerHTML = `
+      <div class="row-header">
+        <div class="row-title"><span class="actor-link" data-idx="${realIdx}">${row.actor.name}</span> — ${row.category.label}</div>
+        <div class="row-tier">${row.label}</div>
+      </div>
+      <div class="slots"></div>
+    `;
+    const slotsEl = div.querySelector('.slots');
+    const filled = [...row.found].map(id => row.eligibleMovies.find(m => m.id === id));
+    for (let i = 0; i < row.slots; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'slot';
+      if (filled[i]) {
+        slot.classList.add('filled');
+        const m = filled[i];
+        slot.textContent = m.year ? `${m.title} (${m.year})` : m.title;
+      } else {
+        slot.textContent = '?';
+      }
+      slotsEl.appendChild(slot);
+    }
+    div.querySelector('.actor-link').addEventListener('click', (e) => {
+      e.stopPropagation();
+      showActorModal(row.actor);
+    });
+    pyramid.appendChild(div);
+  });
+
+  document.getElementById('filledCount').textContent = state.rows.reduce((a,r)=>a+r.found.size,0);
+  document.getElementById('guessesLeft').textContent = state.guessesLeft;
+  document.getElementById('score').textContent = state.score;
+}
+
+function setFeedback(msg, kind='') {
+  const el = document.getElementById('feedback');
+  el.textContent = msg;
+  el.className = 'feedback' + (kind ? ' ' + kind : '');
+}
+
+function showActorModal(actor) {
+  const modal = document.getElementById('actorModal');
+  const img = document.getElementById('modalImg');
+  const name = document.getElementById('modalName');
+  name.textContent = actor.name;
+  if (actor.profile_path) {
+    img.src = `https://image.tmdb.org/t/p/w500${actor.profile_path}`;
+    img.classList.remove('placeholder');
+    img.alt = actor.name;
+  } else {
+    img.removeAttribute('src');
+    img.classList.add('placeholder');
+    img.alt = 'No photo available';
+  }
+  modal.classList.remove('hidden');
+}
+
+function hideActorModal() {
+  document.getElementById('actorModal').classList.add('hidden');
+}
+
+// ---------- Leaderboard ----------
+const LB_MAX = 10;
+
+async function loadLeaderboard() {
+  try {
+    const res = await fetch('/api/leaderboard');
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.entries) ? data.entries : [];
+  } catch (e) {
+    console.error('Failed to load leaderboard', e);
+    return [];
+  }
+}
+
+async function qualifiesForLeaderboard(score) {
+  const entries = await loadLeaderboard();
+  if (entries.length < LB_MAX) return { qualifies: true, entries };
+  const lowest = Math.min(...entries.map(e => e.score));
+  return { qualifies: score > lowest, entries };
+}
+
+async function submitLeaderboardEntry(initials, score) {
+  try {
+    const res = await fetch('/api/leaderboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initials, score }),
+    });
+    if (!res.ok) {
+      console.error('Leaderboard submit failed', await res.text());
+      return await loadLeaderboard();
+    }
+    const data = await res.json();
+    return Array.isArray(data.entries) ? data.entries : [];
+  } catch (e) {
+    console.error('Failed to submit leaderboard entry', e);
+    return await loadLeaderboard();
+  }
+}
+
+function showLeaderboardModal({ entryMode = false, score = 0, highlightIdx = -1 } = {}) {
+  const modal = document.getElementById('leaderboardModal');
+  const entryScreen = document.getElementById('lbEntryScreen');
+  if (entryMode) {
+    entryScreen.classList.remove('hidden');
+    document.getElementById('lbEntryScore').textContent = score.toLocaleString();
+    // Reset and focus the first initial box
+    document.querySelectorAll('.lb-char').forEach(el => el.value = '');
+    setTimeout(() => document.querySelector('.lb-char[data-i="0"]').focus(), 50);
+  } else {
+    entryScreen.classList.add('hidden');
+  }
+  renderLeaderboardList(highlightIdx);
+  modal.classList.remove('hidden');
+}
+
+function hideLeaderboardModal() {
+  document.getElementById('leaderboardModal').classList.add('hidden');
+}
+
+async function renderLeaderboardList(highlightIdx = -1) {
+  const listEl = document.getElementById('lbList');
+  listEl.innerHTML = '<div class="lb-list-empty">Loading…</div>';
+  const entries = await loadLeaderboard();
+  listEl.innerHTML = '';
+  if (!entries.length) {
+    listEl.innerHTML = '<div class="lb-list-empty">No scores yet. Be the first.</div>';
+    return;
+  }
+  entries.forEach((e, i) => {
+    const row = document.createElement('div');
+    row.className = 'lb-entry-row' + (i === highlightIdx ? ' highlight' : '');
+    row.innerHTML = `
+      <div class="lb-rank">${String(i + 1).padStart(2, '0')}.</div>
+      <div class="lb-initials-display">${escapeHtml(e.initials)}</div>
+      <div class="lb-score-display">${e.score.toLocaleString()}</div>
+    `;
+    listEl.appendChild(row);
+  });
+}
+
+async function handlePyramidComplete(finalScore) {
+  const { qualifies } = await qualifiesForLeaderboard(finalScore);
+  if (qualifies) {
+    showLeaderboardModal({ entryMode: true, score: finalScore });
+  } else {
+    // Show the board anyway so they can see where they fell
+    showLeaderboardModal({ entryMode: false });
+  }
+}
+
+function submitGuess() {
+  const raw = document.getElementById('guess').value.trim();
+  if (!raw) return;
+  const norm = normalize(raw);
+  if (!norm) return;
+  document.getElementById('guess').value = '';
+
+  let matchRowIdx = -1;
+  let match = null;
+
+  // Exact match across all rows
+  for (let i = 0; i < state.rows.length; i++) {
+    const row = state.rows[i];
+    for (const m of row.eligibleMovies) {
+      if (m.normalized === norm) { matchRowIdx = i; match = m; break; }
+    }
+    if (match) break;
+  }
+  // Fuzzy fallback
+  if (!match) {
+    let bestDist = Infinity;
+    for (let i = 0; i < state.rows.length; i++) {
+      const row = state.rows[i];
+      for (const m of row.eligibleMovies) {
+        const d = lev(norm, m.normalized);
+        const threshold = Math.max(1, Math.floor(m.normalized.length * 0.12));
+        if (d <= threshold && d < bestDist) {
+          bestDist = d; match = m; matchRowIdx = i;
+        }
+      }
+    }
+  }
+
+  if (match) {
+    const row = state.rows[matchRowIdx];
+    if (row.found.has(match.id)) {
+      setFeedback(`Already on the marquee: ${match.title}`, 'error');
+      return;
+    }
+    if (row.found.size >= row.slots) {
+      setFeedback(`${match.title} fits ${row.actor.name}'s row but it's already full.`, 'error');
+      return;
+    }
+    row.found.add(match.id);
+    const base = { 4: 100, 3: 150, 2: 250, 1: 400 }[row.tier];
+    // Obscurity bonus: linear from 0 (most popular pick) up to 2× base (most obscure).
+    // obscurityFactor = popRank / (poolSize - 1), in [0, 1]
+    const denom = Math.max(1, match.poolSize - 1);
+    const obscurityFactor = match.popRank / denom;
+    const obscurityBonus = Math.round(base * 2 * obscurityFactor);
+    const earned = base + obscurityBonus;
+    state.score += earned;
+    let msg = `✓ ${match.title} (${match.year}) → ${row.actor.name}'s row. +${base}`;
+    if (obscurityBonus > 0) msg += ` +${obscurityBonus} obscurity`;
+    setFeedback(msg, 'success');
+    renderPyramid();
+
+    const totalFilled = state.rows.reduce((a,r)=>a+r.found.size,0);
+    if (totalFilled >= state.totalSlots) {
+      const bonus = state.guessesLeft * 50;
+      state.score += bonus;
+      document.getElementById('score').textContent = state.score;
+      setFeedback(`★ PYRAMID COMPLETE ★ +${bonus} bonus. Final: ${state.score}`, 'success');
+      revealAnswers();
+      // Show leaderboard after a beat so the feedback lands
+      setTimeout(() => handlePyramidComplete(state.score), 900);
+    }
+  } else {
+    state.guessesLeft--;
+    setFeedback(`✗ "${raw}" doesn't fit any row. ${state.guessesLeft} guesses left.`, 'error');
+    renderPyramid();
+    if (state.guessesLeft <= 0) {
+      setFeedback('Out of guesses. The reels stop turning.', 'error');
+      revealAnswers();
+    }
+  }
+}
+
+function revealAnswers() {
+  const block = document.getElementById('answersBlock');
+  block.innerHTML = '';
+  const sorted = [...state.rows].sort((a,b) => a.tier - b.tier);
+  sorted.forEach(row => {
+    const div = document.createElement('div');
+    div.className = 'reveal-row';
+    const cleanLabel = row.category.label.replace(/<\/?em>/g,'');
+    div.innerHTML = `<div class="rh">${row.actor.name} — ${cleanLabel}</div>`;
+    const ul = document.createElement('ul');
+    row.eligibleMovies.forEach(m => {
+      const li = document.createElement('li');
+      li.textContent = m.year ? `${m.title} (${m.year})` : m.title;
+      if (row.found.has(m.id)) li.classList.add('found');
+      ul.appendChild(li);
+    });
+    div.appendChild(ul);
+    block.appendChild(div);
+  });
+  document.getElementById('results').classList.remove('hidden');
+  document.getElementById('guess').disabled = true;
+  document.getElementById('submitBtn').disabled = true;
+}
+
+// ---------- Autocomplete (TMDB search) ----------
+let suggestionsState = { items: [], activeIdx: -1 };
+let searchDebounceTimer = null;
+let searchSeq = 0; // ignore stale responses
+
+function updateSuggestions() {
+  const input = document.getElementById('guess');
+  const raw = input.value.trim();
+
+  // Require at least 2 chars
+  if (raw.length < 2) {
+    hideSuggestions();
+    return;
+  }
+
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => runSearch(raw), 220);
+}
+
+async function runSearch(query) {
+  const mySeq = ++searchSeq;
+  try {
+    const data = await tmdb('/search/movie', { query, include_adult: 'false', page: 1 });
+    if (mySeq !== searchSeq) return; // a newer search has started
+    const results = (data.results || [])
+      .filter(m => m.title && m.release_date) // need a year
+      .sort((a,b) => (b.popularity||0) - (a.popularity||0))
+      .slice(0, 8)
+      .map(m => ({
+        id: m.id,
+        title: m.title,
+        year: (m.release_date||'').slice(0,4),
+      }));
+    if (!results.length) {
+      hideSuggestions();
+      return;
+    }
+    suggestionsState = { items: results, activeIdx: -1 };
+    renderSuggestions();
+  } catch (e) {
+    console.error('Search failed', e);
+    hideSuggestions();
+  }
+}
+
+function renderSuggestions() {
+  const box = document.getElementById('suggestions');
+  box.innerHTML = '';
+  suggestionsState.items.forEach((m, i) => {
+    const div = document.createElement('div');
+    div.className = 'suggestion' + (i === suggestionsState.activeIdx ? ' active' : '');
+    div.innerHTML = `
+      <span>${escapeHtml(m.title)}</span>
+      <span class="year">${m.year || ''}</span>
+    `;
+    div.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      pickSuggestion(i);
+    });
+    box.appendChild(div);
+  });
+  box.classList.remove('hidden');
+}
+
+function escapeHtml(s) {
+  return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function pickSuggestion(idx) {
+  const item = suggestionsState.items[idx];
+  if (!item) return;
+  document.getElementById('guess').value = item.title;
+  hideSuggestions();
+  submitGuess();
+}
+
+function hideSuggestions() {
+  document.getElementById('suggestions').classList.add('hidden');
+  suggestionsState = { items: [], activeIdx: -1 };
+}
+
+// ---------- Wiring ----------
+document.getElementById('submitBtn').addEventListener('click', () => {
+  hideSuggestions();
+  submitGuess();
+});
+
+const guessInput = document.getElementById('guess');
+guessInput.addEventListener('input', updateSuggestions);
+guessInput.addEventListener('blur', () => {
+  setTimeout(hideSuggestions, 150);
+});
+guessInput.addEventListener('keydown', e => {
+  const { items, activeIdx } = suggestionsState;
+  if (items.length && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+    e.preventDefault();
+    const next = e.key === 'ArrowDown'
+      ? (activeIdx + 1) % items.length
+      : (activeIdx - 1 + items.length) % items.length;
+    suggestionsState.activeIdx = next;
+    renderSuggestions();
+    return;
+  }
+  if (e.key === 'Enter') {
+    if (activeIdx >= 0 && items[activeIdx]) {
+      e.preventDefault();
+      pickSuggestion(activeIdx);
+    } else {
+      hideSuggestions();
+      submitGuess();
+    }
+    return;
+  }
+  if (e.key === 'Escape') {
+    hideSuggestions();
+  }
+});
+
+document.getElementById('newRound').addEventListener('click', () => {
+  document.getElementById('guess').disabled = false;
+  document.getElementById('submitBtn').disabled = false;
+  document.getElementById('results').classList.add('hidden');
+  hideSuggestions();
+  buildRound();
+});
+document.getElementById('giveUp').addEventListener('click', revealAnswers);
+
+document.getElementById('modalClose').addEventListener('click', hideActorModal);
+document.querySelector('#actorModal .modal-backdrop').addEventListener('click', hideActorModal);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    hideActorModal();
+    hideLeaderboardModal();
+  }
+});
+
+// Leaderboard UI
+document.getElementById('viewLeaderboard').addEventListener('click', () => {
+  showLeaderboardModal();
+});
+document.getElementById('lbClose').addEventListener('click', hideLeaderboardModal);
+document.querySelector('#leaderboardModal .modal-backdrop').addEventListener('click', hideLeaderboardModal);
+
+// Initials input: uppercase, auto-advance, backspace to prev
+const charInputs = Array.from(document.querySelectorAll('.lb-char'));
+charInputs.forEach((inp, i) => {
+  inp.addEventListener('input', (e) => {
+    let v = (e.target.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    e.target.value = v.slice(0, 1);
+    if (e.target.value && i < charInputs.length - 1) {
+      charInputs[i + 1].focus();
+      charInputs[i + 1].select();
+    }
+  });
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' && !e.target.value && i > 0) {
+      charInputs[i - 1].focus();
+      charInputs[i - 1].value = '';
+    } else if (e.key === 'Enter') {
+      document.getElementById('lbSubmitBtn').click();
+    } else if (e.key === 'ArrowLeft' && i > 0) {
+      charInputs[i - 1].focus();
+    } else if (e.key === 'ArrowRight' && i < charInputs.length - 1) {
+      charInputs[i + 1].focus();
+    }
+  });
+  inp.addEventListener('focus', (e) => e.target.select());
+});
+
+document.getElementById('lbSubmitBtn').addEventListener('click', async () => {
+  let initials = charInputs.map(el => el.value || '').join('').toUpperCase();
+  if (initials.length < 3) initials = (initials + 'AAA').slice(0, 3);
+  const finalScore = state.score;
+  const entries = await submitLeaderboardEntry(initials, finalScore);
+  const myIdx = entries.findIndex(e => e.initials === initials && e.score === finalScore);
+  document.getElementById('lbEntryScreen').classList.add('hidden');
+  renderLeaderboardList(myIdx);
+});
+
+buildRound();
+</script>
+</body>
+</html>
