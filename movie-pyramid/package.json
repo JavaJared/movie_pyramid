@@ -1,0 +1,13 @@
+{
+  "name": "movie-pyramid",
+  "version": "1.0.0",
+  "description": "A cinephile's pyramid-guessing game powered by TMDB.",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.34.0"
+  }
+}
